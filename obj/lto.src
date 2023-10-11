@@ -1,0 +1,47 @@
+	section	.text,"ax",@progbits
+	assume	adl = 1
+	section	.text,"ax",@progbits
+	public	_main
+_main:
+	ld	hl, -7
+	call	__frameset
+	pea	ix - 7
+	call	__ZN6Memory4InitEv
+	pop	hl
+	section	.text,"ax",@progbits
+
+	section	.text,"ax",@progbits
+	weak	__ZN6Memory4InitEv
+__ZN6Memory4InitEv:
+	call	__frameset0
+	ld	bc, 7
+	xor	a, a
+	sbc	hl, hl
+	ld	e, a
+BB1_1:
+	push	hl
+	pop	iy
+	call	__lcmpu
+	jr	nc, BB1_3
+	ld	hl, (ix + 6)
+	lea	bc, iy
+	add	hl, bc
+	ld	(hl), 0
+	push	bc
+	pop	hl
+	ld	bc, 1
+	call	__ladd
+	ld	bc, 7
+	jr	BB1_1
+BB1_3:
+	pop	ix
+	ret
+	section	.text,"ax",@progbits
+
+	ident	"clang version 15.0.0 (https://github.com/jacobly0/llvm-project 5f8512f22751066573aa48ac848a6d2195838ac3)"
+	extern	__Unwind_SjLj_Register
+	extern	__Unwind_SjLj_Unregister
+	extern	__frameset
+	extern	__lcmpu
+	extern	__frameset0
+	extern	__ladd
