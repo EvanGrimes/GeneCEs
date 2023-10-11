@@ -1,24 +1,50 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <fileioc.h>
+#include <ti/getcsc.h>
 
     using Byte = unsigned char;  //8bit
     using Word = unsigned short; //16bit
     using DWord = unsigned long; //32bit
 
-    using u64 = unsigned long;
+    using u32 = unsigned short int;
+    using u16 = Word;
 struct Memory{
-    static constexpr u64 MAX_MEM = 7;
-    Byte Data[MAX_MEM];
+    static constexpr uint8_t MAX_MEM = uint8_t(65536); //64k
+
+    uint8_t *MB1Ptr;
+    uint8_t *MB2Ptr;
+
+    ti_var_t MemB1;
+    ti_var_t MemB2;
 
     void Init(){
-        for( u64 i = 0; i < MAX_MEM; i++){
-            Data[i] = 0x00;
-        }
+        
+        MemB1 = ti_Open("MB1", "r+");
+        MemB2 = ti_Open("MB2", "r+");
+
+        ti_Resize(MemB1, (MAX_MEM/2));
+        ti_Resize(MemB2, (MAX_MEM/2));
+
+        MB1Ptr = static_cast<uint8_t*>(ti_GetDataPtr(MemB1));
+        MB2Ptr = static_cast<uint8_t*>(ti_GetDataPtr(MemB2));
+
+        memset(MB1Ptr, 0, 32768);
+        memset(MB2Ptr, 0, 32768);
+        
+
+        //ti_SetArchiveStatus(true, MemB1);
+        //ti_SetArchiveStatus(true, MemB2);
+
+        //ti_Close(MemB1);
+        //ti_Close(MemB2);
     }
 
-    Byte operator[](u64 Address) const{
-        return Data[Address];
-    }
+    //Byte operator[](u32 Address) const{
+        //return Data[Address];
+    //}
 
 };
 
@@ -48,7 +74,7 @@ struct CPU{
 
         PC = 0x00;
 
-        SSP = mem[PC];  //Load Contents of SSP with data at address $00
+        SSP = ti_Read((mem.MB1Ptr+PC), 1, 1, mem.MemB1);  //Load Contents of SSP with data at address $00
 
         PC = 0x00004;  //Sets program counter to address $04
 
@@ -62,7 +88,7 @@ struct CPU{
     }
 
     Byte FetchByte(int& Cycles, Memory mem){
-            Byte Data = mem[PC];
+            Byte Data = ti_Read((mem.MB1Ptr+PC), 1, 1, mem.MemB1);
             PC++;
             Cycles--;
             return Data;
@@ -86,9 +112,7 @@ int main(void){
 
     cpu.Execute(2, mem);
 
-    while(1){
-
-    }
+    while (!os_GetCSC());
 
     return 0;
 }
