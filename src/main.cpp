@@ -9,42 +9,22 @@
     using Word = unsigned short; //16bit
     using DWord = unsigned long; //32bit
 
-    using u32 = unsigned short int;
-    using u16 = Word;
+    using u32 = unsigned short;
+    using u16 = unsigned long;
 struct Memory{
-    static constexpr uint8_t MAX_MEM = uint8_t(65536); //64k
+    static constexpr u16 MAX_MEM = u16(65536); //64k
 
-    uint8_t *MB1Ptr;
-    uint8_t *MB2Ptr;
-
-    ti_var_t MemB1;
-    ti_var_t MemB2;
+    static Byte Data[MAX_MEM];
 
     void Init(){
-        
-        MemB1 = ti_Open("MB1", "r+");
-        MemB2 = ti_Open("MB2", "r+");
-
-        ti_Resize(MemB1, (MAX_MEM/2));
-        ti_Resize(MemB2, (MAX_MEM/2));
-
-        MB1Ptr = static_cast<uint8_t*>(ti_GetDataPtr(MemB1));
-        MB2Ptr = static_cast<uint8_t*>(ti_GetDataPtr(MemB2));
-
-        memset(MB1Ptr, 0, 32768);
-        memset(MB2Ptr, 0, 32768);
-        
-
-        //ti_SetArchiveStatus(true, MemB1);
-        //ti_SetArchiveStatus(true, MemB2);
-
-        //ti_Close(MemB1);
-        //ti_Close(MemB2);
+        for(u16 i = 0; i < MAX_MEM; i++){
+            Data[i] = 0;
+        }
     }
 
-    //Byte operator[](u32 Address) const{
-        //return Data[Address];
-    //}
+    Byte operator[](u32 Address) const{
+        return Data[Address];
+    }
 
 };
 
@@ -74,7 +54,7 @@ struct CPU{
 
         PC = 0x00;
 
-        SSP = ti_Read((mem.MB1Ptr+PC), 1, 1, mem.MemB1);  //Load Contents of SSP with data at address $00
+        SSP = mem.Data[PC];  //Load Contents of SSP with data at address $00
 
         PC = 0x00004;  //Sets program counter to address $04
 
@@ -88,7 +68,7 @@ struct CPU{
     }
 
     Byte FetchByte(int& Cycles, Memory mem){
-            Byte Data = ti_Read((mem.MB1Ptr+PC), 1, 1, mem.MemB1);
+            Byte Data = mem.Data[PC];
             PC++;
             Cycles--;
             return Data;
@@ -97,6 +77,7 @@ struct CPU{
     void Execute(int Cycles, Memory mem){
         while(Cycles > 0){
             Byte Instruction = FetchByte(Cycles, mem);
+
         }
     }
 
