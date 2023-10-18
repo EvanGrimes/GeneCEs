@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <typeinfo>
 
 #include <fileioc.h>
 #include <ti/getcsc.h>
@@ -10,7 +9,7 @@
     using Byte = unsigned char;  //8bit
     using Word = unsigned short; //16bit
     //using DWord = unsigned long; //32bit
-    using u32 = unsigned long;
+    using u32 = unsigned int;
     using u16 = unsigned short;
 
 
@@ -33,7 +32,14 @@
 struct DWord{
     Word H1;
     Word H2;
+    int Testy;
 
+    bool checkOverFlow(){
+        if(H2 == 0xFFFF){
+            return true;
+        }
+        return false;
+    }
     operator u32() {
         return (H1 + H2);
   }
@@ -83,9 +89,11 @@ struct CPU{
     int TESTINT = 0;
 
     void setDWord(DWord& DW, u32 Data){
-        dbg_printf(typeid(Data).name());
+        if(DW.Testy == 1) dbg_printf("DATA == %x\n", Data);
         DW.H1 = (Data >> 16);
-        DW.H2 = (Data & 0b0000000011111111);
+        if(DW.Testy == 1) dbg_printf("DW H1 == %x\n", DW.H1);
+        DW.H2 = (Data);
+        if(DW.Testy == 1) dbg_printf("DW H2 == %x\n", DW.H2);
     }
 
     void Reset(Memory mem){
@@ -143,7 +151,12 @@ struct CPU{
             Word DP1 = mem.Data[PC.H2];    //Stores half of Word
             dbg_printf("D1 = %x \n", DP1);
             dbg_printf("D1 S= %x \n", mem.Data[PC.H2]);
-            PC.H2++;                    // Increases Program Counter
+            if(PC.checkOverFlow()){
+                PC.H1++;
+            }
+            else{
+                PC.H2++;  
+            }                    // Increases Program Counter
 
             Byte DP2 = mem.Data[PC.H2];    //Stores other half of Word
             dbg_printf("D2 = %x \n", DP2);
@@ -155,7 +168,13 @@ struct CPU{
             Word Data = (DP1 + DP2);   //Adds two halfs of word together
             dbg_printf("Data Word = %x \n \n", Data);
 
-            PC.H2++;                    // Increases Program Counter
+            if(PC.checkOverFlow()){
+                PC.H1++;
+            }
+            else{
+                PC.H2++;  
+            }
+                              // Increases Program Counter
             Cycles--;               
             return Data;             // Returns word only
     }
@@ -165,7 +184,12 @@ struct CPU{
 
         dbg_printf("Data Byte = %x \n \n", Data);
 
-        PC.H1++;
+        if(PC.checkOverFlow()){
+                PC.H1++;
+            }
+        else{
+                PC.H2++;  
+            }
         Cycles--;
         return Data;
 
@@ -197,7 +221,6 @@ struct CPU{
                             Z = (MoveData == 0x00);
                             N = (MoveData & 0b10000000) > 0;
                             dbg_printf("BYTE MOVED\n");
-                            TESTINT++;
                             break;}
                         case 0x12:{
                             dbg_printf("REGISTER D1\n");
@@ -321,32 +344,69 @@ struct CPU{
                     case INS_LEA:{
                         dbg_printf("LEA FOUND\n");
 
-                        DWord Address;  FetchDWord(Cycles, mem, Address);      //Grabs data to be moved
                         Byte Register = ((Instruction & 0b1111111100000000) >> 8);      //Grabs Register
 
                         switch(Register){
                             case 0x41:{
-                                dbg_printf("REGISTER A1\n");
-                                setDWord(A0, Address);
-                                break;
+                                dbg_printf("REGISTER A0\n");
+                                FetchDWord(Cycles, mem, A0);  // Grabs Address
 
+                                dbg_printf("A0.H1 == %x\n", A0.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A0.H2);
+                                break;
                             }
                             case 0x43:{
+                                dbg_printf("REGISTER A1\n");
+                                FetchDWord(Cycles, mem, A1);
+
+                                dbg_printf("A0.H1 == %x\n", A1.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A1.H2);
+                                break;
                                 
                             }
                             case 0x45:{
+                                dbg_printf("REGISTER A2\n");
+                                FetchDWord(Cycles, mem, A2);
+
+                                dbg_printf("A0.H1 == %x\n", A2.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A2.H2);
+                                break;
                                 
                             }
                             case 0x47:{
+                                dbg_printf("REGISTER A3\n");
+                                FetchDWord(Cycles, mem, A3);
+
+                                dbg_printf("A0.H1 == %x\n", A3.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A3.H2);
+                                break;
                                 
                             }
                             case 0x49:{
+                                dbg_printf("REGISTER A4\n");
+                                FetchDWord(Cycles, mem, A4);
+
+                                dbg_printf("A0.H1 == %x\n", A4.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A4.H2);
+                                break;
                                 
                             }
                             case 0x4B:{
+                                dbg_printf("REGISTER A5\n");
+                                FetchDWord(Cycles, mem, A5);
+
+                                dbg_printf("A0.H1 == %x\n", A5.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A5.H2);
+                                break;
                                 
                             }
                             case 0x4D:{
+                                dbg_printf("REGISTER A6\n");
+                                FetchDWord(Cycles, mem, A6);
+
+                                dbg_printf("A0.H1 == %x\n", A6.H1);
+                                dbg_printf("A0.H2 == %x\n\n", A6.H2);
+                                break;
                                 
                             }
 
@@ -355,6 +415,7 @@ struct CPU{
 
                             
                         }
+                        break;
                     }
 
 
@@ -376,11 +437,15 @@ int main(void){
     //INLINE PRG
 
         //REGISTER
-    mem.Data[4] = 0x12;
+    mem.Data[4] = 0x4D;
         //INS
-    mem.Data[5] = INS_MOVEB_IMM;
+    mem.Data[5] = INS_LEA;
         //DATA
-    mem.Data[6] = 0x10;
+    mem.Data[6] = 0x12;
+    mem.Data[7] = 0x34;
+    mem.Data[8] = 0x56;
+    mem.Data[9] = 0x78;
+
 
     //ENDPRG
 
@@ -397,13 +462,13 @@ int main(void){
     dbg_printf("D6 = %x%x\n", cpu.D6.H1, cpu.D6.H2);
     dbg_printf("D7 = %x%x\n", cpu.D7.H1, cpu.D7.H2);
 
-    dbg_printf("D7 = %x%x\n", cpu.A0.H1, cpu.A0.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A1.H1, cpu.A1.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A2.H1, cpu.A2.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A3.H1, cpu.A3.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A4.H1, cpu.A4.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A5.H1, cpu.A5.H2);
-    dbg_printf("D7 = %x%x\n", cpu.A6.H1, cpu.A6.H2);
+    dbg_printf("A0 = %x%x\n", cpu.A0.H1, cpu.A0.H2);
+    dbg_printf("A1 = %x%x\n", cpu.A1.H1, cpu.A1.H2);
+    dbg_printf("A2 = %x%x\n", cpu.A2.H1, cpu.A2.H2);
+    dbg_printf("A3 = %x%x\n", cpu.A3.H1, cpu.A3.H2);
+    dbg_printf("A4 = %x%x\n", cpu.A4.H1, cpu.A4.H2);
+    dbg_printf("A5 = %x%x\n", cpu.A5.H1, cpu.A5.H2);
+    dbg_printf("A6 = %x%x\n", cpu.A6.H1, cpu.A6.H2);
 
 
     
