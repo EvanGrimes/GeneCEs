@@ -8,7 +8,6 @@
 
     using Byte = unsigned char;  //8bit
     using Word = unsigned short; //16bit
-    //using DWord = unsigned long; //32bit
     using u32 = unsigned int;
     using u16 = unsigned short;
 
@@ -20,8 +19,23 @@
 
     // OPCODES
     static constexpr Word 
-        INS_MOVEB_IMM = 0x003C,
-        INS_MOVEB_ADDR = 0x003A,
+        INS_MOVEB_IMM_R = 0x003C,
+        INS_MOVEB_IMM_A_W = 0x11FC,
+        INS_MOVEB_IMM_A_D = 0x13FC,
+
+        //INS_MOVEB_ADD_A = 0x00F8,
+        INS_MOVEB_ADD_R = 0x0038,
+
+        //INS_MOVEB_RG__A = 0x00C1,
+
+        //INS_MOVEB_RG_D0 = 0x0000,
+        //INS_MOVEB_RG_D1 = 0x0001,
+        //INS_MOVEB_RG_D2 = 0x0002,
+        //INS_MOVEB_RG_D3 = 0x0003,
+        //INS_MOVEB_RG_D4 = 0x0004,
+        //INS_MOVEB_RG_D5 = 0x0005,
+        //INS_MOVEB_RG_D6 = 0x0006,
+        //INS_MOVEB_RG_D7 = 0x0007,
         //INS_MOVEW_IMM
         //INS_MOVEW_ADDR
         //INS_MOVEL_IMM
@@ -34,11 +48,24 @@ struct DWord{
     Word H2;
     int Testy;
 
-    bool checkOverFlow(){
-        if(H2 == 0xFFFF){
-            return true;
+    void Add(u16 Addend){
+        if(H1 == 0xFFFF){
+            H2 = 0x0000;
+            H1 += Addend;
         }
-        return false;
+        else{
+            H2 += Addend;
+        }
+    }
+
+    void Inc(){
+        if(H1 == 0xFFFF){
+            H2 = 0x0000;
+            H1++;
+        }
+        else{
+            H2++;
+        }
     }
     operator u32() {
         return (H1 + H2);
@@ -48,12 +75,12 @@ struct DWord{
 
 
 struct Memory{
-    static constexpr u16 MAX_MEM = size_t(65536); //64k
+    static constexpr u32 MAX_MEM = size_t((65536)); //64k
 
     static inline Byte Data[MAX_MEM]; //64k block of RAM
 
     void Init(){
-        for(u16 i = 0; i < MAX_MEM; i++){  //Sets all of mem to 0x00
+        for(u32 i = 0; i < MAX_MEM; i++){  //Sets all of mem to 0x00
             Data[i] = 0;
         }
     }
@@ -151,12 +178,7 @@ struct CPU{
             Word DP1 = mem.Data[PC.H2];    //Stores half of Word
             dbg_printf("D1 = %x \n", DP1);
             dbg_printf("D1 S= %x \n", mem.Data[PC.H2]);
-            if(PC.checkOverFlow()){
-                PC.H1++;
-            }
-            else{
-                PC.H2++;  
-            }                    // Increases Program Counter
+            PC.Add(0x0001);                  // Increases Program Counter
 
             Byte DP2 = mem.Data[PC.H2];    //Stores other half of Word
             dbg_printf("D2 = %x \n", DP2);
@@ -168,12 +190,7 @@ struct CPU{
             Word Data = (DP1 + DP2);   //Adds two halfs of word together
             dbg_printf("Data Word = %x \n \n", Data);
 
-            if(PC.checkOverFlow()){
-                PC.H1++;
-            }
-            else{
-                PC.H2++;  
-            }
+            PC.Add(0x0001);
                               // Increases Program Counter
             Cycles--;               
             return Data;             // Returns word only
@@ -184,12 +201,7 @@ struct CPU{
 
         dbg_printf("Data Byte = %x \n \n", Data);
 
-        if(PC.checkOverFlow()){
-                PC.H1++;
-            }
-        else{
-                PC.H2++;  
-            }
+        PC.Add(0x0001);
         Cycles--;
         return Data;
 
@@ -197,7 +209,7 @@ struct CPU{
     
 
 
-    void Execute(int Cycles, Memory mem){
+    void Execute(int Cycles, Memory& mem){
         while(Cycles > 0){
             Word Instruction = FetchWord(Cycles, mem);        // Gets instruction
             Byte InstructionB = (Instruction & 0x00FF);
@@ -205,7 +217,7 @@ struct CPU{
             switch(InstructionB){
 
 
-                case INS_MOVEB_IMM:{
+                case INS_MOVEB_IMM_R:{
                     dbg_printf("MOVEB FOUND\n");
 
                     Byte MoveData = FetchByte(Cycles, mem);      //Grabs data to be moved
@@ -271,10 +283,8 @@ struct CPU{
                     break;
                 }
 
-
-
-                case INS_MOVEB_ADDR:{
-                        dbg_printf("MOVEB ADDR FOUND\n");
+                case INS_MOVEB_ADD_R:{
+                        dbg_printf("MOVEB ADDR_R FOUND\n");
 
                         Byte MoveData = FetchByte(Cycles, mem);      //Grabs data to be moved
                         Byte Register = FetchByte(Cycles, mem);      //Grabs Register
@@ -332,7 +342,6 @@ struct CPU{
                                 break;}
                             default:
                                 dbg_printf("REGISTER ERROR\n");
-                                dbg_printf("%i\n"),TESTINT;
                                 break; 
                         }
                     }
@@ -420,9 +429,53 @@ struct CPU{
 
 
                     default:
-                            dbg_printf("INS ERROR\n");
-                            break; 
+                        switch(Instruction){                //When no 1-byte opcode found, start searching for 2-byte opcodes
+                            case INS_MOVEB_IMM_A_W:{
+                                dbg_printf("MOVEB IMM_A_W FOUND\n");
+
+                                PC.Inc();
+
+                                Byte MoveData = FetchByte(Cycles, mem);      //Grabs data to be moved
+                                Word Address = FetchWord(Cycles, mem);       //Grabs recipient address
+
+                                dbg_printf("MoveData = %x\n", MoveData);
+                                dbg_printf("Address = %x\n", Address);
+
+                                mem.Data[Address] = MoveData;     
+
+                                dbg_printf("Address Cont. = %x\n", mem.Data[Address]); 
+                                break;  
+                            }
+                            case INS_MOVEB_IMM_A_D:{    
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                //CURRENTLY CRASHES EMULATOR
+                                dbg_printf("MOVEB IMM_A_D FOUND\n");
+
+                                PC.Inc();
+
+                                Byte MoveData = FetchByte(Cycles, mem);      //Grabs data to be moved
+
+                                DWord Address;
+                                FetchDWord(Cycles, mem, Address);       //Grabs recipient address
+
+                                dbg_printf("MoveData = %x\n", MoveData);
+                                dbg_printf("Address = %x%x\n", Address.H1, Address.H2);
+
+                                mem.Data[(Address.H1 << 16) + Address.H2] = MoveData;   
+
+                                dbg_printf("Address Cont. = %x\n", mem.Data[Address]); 
+                                break;     
+                            }
+                        }
+                        break;
+                            
             }
+            
         }
     }
 };
@@ -437,21 +490,23 @@ int main(void){
     //INLINE PRG
 
         //REGISTER
-    mem.Data[4] = 0x4D;
+    mem.Data[4] = (INS_MOVEB_IMM_A_W >> 8);
         //INS
-    mem.Data[5] = INS_LEA;
+    mem.Data[5] = (Byte)INS_MOVEB_IMM_A_W;
         //DATA
-    mem.Data[6] = 0x12;
+    mem.Data[6] = 0x00;
     mem.Data[7] = 0x34;
-    mem.Data[8] = 0x56;
+
+    mem.Data[8] = 0x00;
     mem.Data[9] = 0x78;
+
 
 
     //ENDPRG
 
     cpu.Execute(2, mem);
 
-    mem.Data[17] = cpu.D0;
+    dbg_printf("$0078 = %x\n", mem.Data[0x0078]);
 
     dbg_printf("D0 = %x%x\n", cpu.D0.H1, cpu.D0.H2);
     dbg_printf("D1 = %x%x\n", cpu.D1.H1, cpu.D1.H2);
